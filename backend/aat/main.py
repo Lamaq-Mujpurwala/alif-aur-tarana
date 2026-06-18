@@ -16,7 +16,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from aat import __version__
+from aat import __version__, cues
 from aat.agent import respond
 from aat.audio import to_wav
 from aat.config import get_settings
@@ -147,16 +147,94 @@ async def pronounce(req: PronounceRequest) -> dict:
     return {"check": check.model_dump(), "reference_audio_b64": reference_audio_b64}
 
 
-@app.websocket("/ws")
-async def ws(socket: WebSocket) -> None:
-    """Placeholder echo socket. The full STT->LLM->TTS stream arrives in T3 (docs/03)."""
+def _b64(audio: bytes) -> str:
+    return base64.b64encode(audio).decode("ascii") if audio else ""
+
+
+# Queries that likely need a lookup get a "searching" filler; others get "thinking".
+_SEARCH_HINTS = {
+    "sher", "shayari", "shaayari", "gaana", "gana", "song", "kaun", "kab", "kahan",
+    "kahaan", "youtube", "dhoond", "dhundo", "khoj", "search", "poet", "shayar", "news",
+}
+
+
+def _filler_category(text: str) -> str:
+    low = text.lower()
+    return "searching" if any(h in low for h in _SEARCH_HINTS) else "thinking"
+
+
+async def _try_cue(category: str, companion: Companion, settings, tts) -> tuple[str, str]:
+    """Serve a cached cue; best-effort (returns empty on any failure)."""
+    try:
+        audio, text = await cues.serve(category, companion, settings, tts)
+        return _b64(audio), text
+    except Exception as exc:  # noqa: BLE001 - cues are optional flourish
+        logger.info("cue '%s' unavailable: %s", category, exc)
+        return "", ""
+
+
+@app.websocket("/converse")
+async def converse(socket: WebSocket) -> None:
+    """Streaming loop with instant cues (docs/03): summon -> wake-ack; else filler -> reply."""
     await socket.accept()
+    s = get_settings()
+    tts = build_tts_router(s, AudioCache(str(_STATIC.parent / "audio_cache")))
+    stt = build_stt_router(s)
     try:
         while True:
-            msg = await socket.receive_text()
-            await socket.send_json({"type": "echo", "data": {"received": msg}})
+            msg = await socket.receive_json()
+            companion = Companion(msg.get("companion", "tarana"))
+
+            # 1. Resolve the user's turn to text (transcribe audio if needed).
+            if msg.get("type") == "audio":
+                wav = await to_wav(base64.b64decode(msg["audio_b64"]))
+                transcript = (await stt.transcribe(wav, language=msg.get("language", "hi"))).strip()
+                await socket.send_json({"type": "transcript", "text": transcript})
+            else:
+                transcript = (msg.get("text") or "").strip()
+            if not transcript:
+                continue
+
+            # 2. Bare summon ("Alif", "suno") -> instant wake-cue, no LLM.
+            if cues.is_summon(transcript):
+                audio_b64, text = await _try_cue("wake", companion, s, tts)
+                await socket.send_json(
+                    {"type": "cue", "role": "wake", "text": text, "audio_b64": audio_b64}
+                )
+                continue
+
+            # 3. Instant filler cue (cached) while the real reply is produced.
+            category = _filler_category(transcript)
+            audio_b64, text = await _try_cue(category, companion, s, tts)
+            if audio_b64:
+                await socket.send_json(
+                    {"type": "cue", "role": category, "text": text, "audio_b64": audio_b64}
+                )
+
+            # 4. The real, grounded, in-character reply.
+            turn = await respond(companion, transcript, s, memory=_MEMORY)
+            persona = get_persona(companion)
+            reply_b64 = ""
+            voice_id = persona.voice_id(s)
+            if voice_id:
+                try:
+                    audio = await tts.synthesize(
+                        turn.speech, voice_id=voice_id, stability=persona.stability,
+                        language_code="ur", seed=persona.seed(s),
+                    )
+                    reply_b64 = _b64(audio)
+                except Exception as exc:  # noqa: BLE001 - still send text if TTS fails
+                    logger.warning("reply TTS failed: %s", exc)
+            await socket.send_json(
+                {
+                    "type": "reply",
+                    "display": turn.display.model_dump(),
+                    "english_note": turn.english_note,
+                    "audio_b64": reply_b64,
+                }
+            )
     except WebSocketDisconnect:
-        logger.info("client disconnected")
+        logger.info("converse client disconnected")
 
 
 # Minimal web UI at /ui/ (text chat + audio playback). Mounted last so API routes win.

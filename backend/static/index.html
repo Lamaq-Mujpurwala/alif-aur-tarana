@@ -18,6 +18,7 @@
     .who button.active { border-color:var(--maroon); color:var(--maroon); box-shadow:0 1px 0 var(--maroon) inset; }
     .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; margin:14px 0; }
     .you { color:var(--muted); font-size:14px; margin:6px 2px; }
+    .cue { color:var(--maroon); font-size:15px; font-style:italic; min-height:20px; margin:6px 2px; direction:rtl; }
     .urdu { font-size:30px; line-height:1.9; direction:rtl; text-align:right;
             font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq",serif; }
     .roman { font-size:16px; color:#4a433c; margin-top:10px; }
@@ -32,13 +33,12 @@
     .mic.rec { background:#b3242f; }
     .send:disabled { opacity:.5; cursor:default; }
     .status { color:var(--muted); font-size:13px; min-height:18px; margin-top:8px; }
-    audio { width:100%; margin-top:12px; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Alif <span style="color:var(--maroon)">aur</span> Tarana</h1>
-    <p class="sub">Urdu, mehsoos kijiye. Type or talk — they reply in voice, tri-script.</p>
+    <p class="sub">Bulaaiye unhe — "Alif suno" — aur baat kijiye. Voice + tri-script.</p>
 
     <div class="who">
       <button id="alif" class="active">Alif — the romantic</button>
@@ -46,27 +46,25 @@
     </div>
 
     <div class="row">
-      <textarea id="text" placeholder="Kuch poochhiye… e.g. 'firaaq' ka matlab samjhao"></textarea>
+      <textarea id="text" placeholder='Try "Alif suno", phir kuch poochhiye…'></textarea>
       <button id="send" class="send">Bhejiye</button>
-      <button id="mic" class="send mic" title="Bol kar poochhiye">🎙</button>
+      <button id="mic" class="send mic" title="Bol kar baat kijiye">🎙</button>
     </div>
-    <div class="status" id="status"></div>
+    <div class="status" id="status">connecting…</div>
     <div class="you" id="you"></div>
+    <div class="cue" id="cue"></div>
 
     <div class="card" id="out" style="display:none">
       <div class="urdu" id="urdu"></div>
       <div class="roman" id="roman"></div>
       <div class="deva" id="deva"></div>
       <div class="note" id="note"></div>
-      <audio id="audio" controls autoplay></audio>
     </div>
   </div>
 
   <script>
-    let companion = "alif";
-    let mediaRecorder = null, chunks = [];
     const $ = (id) => document.getElementById(id);
-
+    let companion = "alif";
     for (const id of ["alif", "tarana"]) {
       $(id).onclick = () => {
         companion = id;
@@ -75,79 +73,81 @@
       };
     }
 
-    function render(data) {
-      const d = data.turn.display;
-      $("urdu").textContent = d.urdu;
-      $("roman").textContent = d.roman;
-      $("deva").textContent = d.devanagari;
-      $("note").textContent = data.turn.english_note || "";
-      if (data.audio_b64) $("audio").src = "data:audio/mp3;base64," + data.audio_b64;
-      $("out").style.display = "block";
-      $("status").textContent = "";
+    // --- sequential audio queue (cue plays before reply) ---
+    const q = [];
+    let playing = false;
+    function enqueue(b64) {
+      if (!b64) return;
+      q.push("data:audio/mp3;base64," + b64);
+      if (!playing) playNext();
+    }
+    function playNext() {
+      if (!q.length) { playing = false; return; }
+      playing = true;
+      const a = new Audio(q.shift());
+      a.onended = playNext;
+      a.onerror = playNext;
+      a.play().catch(playNext);
     }
 
-    async function sendText() {
+    // --- websocket ---
+    let ws, ready = false;
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      ws = new WebSocket(`${proto}://${location.host}/converse`);
+      ws.onopen = () => { ready = true; $("status").textContent = ""; };
+      ws.onclose = () => { ready = false; $("status").textContent = "disconnected — reload"; };
+      ws.onmessage = (ev) => {
+        const m = JSON.parse(ev.data);
+        if (m.type === "transcript") { $("you").textContent = "Aap: " + (m.text || ""); }
+        else if (m.type === "cue") { $("cue").textContent = m.text || ""; enqueue(m.audio_b64); }
+        else if (m.type === "reply") {
+          $("cue").textContent = "";
+          $("urdu").textContent = m.display.urdu;
+          $("roman").textContent = m.display.roman;
+          $("deva").textContent = m.display.devanagari;
+          $("note").textContent = m.english_note || "";
+          $("out").style.display = "block";
+          enqueue(m.audio_b64);
+          $("status").textContent = m.audio_b64 ? "" : "(reply audio unavailable — TTS quota; text shown)";
+        } else if (m.type === "error") { $("status").textContent = "Error: " + m.message; }
+      };
+    }
+    connect();
+
+    function sendText() {
       const text = $("text").value.trim();
-      if (!text) return;
+      if (!text || !ready) return;
       $("you").textContent = "Aap: " + text;
-      $("send").disabled = true;
-      $("status").textContent = companion + " soch rahe/rahi hain…";
-      try {
-        const res = await fetch("/turn", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ companion, text }),
-        });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        render(await res.json());
-      } catch (e) { $("status").textContent = "Error: " + e.message; }
-      finally { $("send").disabled = false; }
+      ws.send(JSON.stringify({ type: "text", companion, text }));
     }
-
-    const blobToB64 = (blob) => new Promise((resolve) => {
-      const r = new FileReader();
-      r.onloadend = () => resolve(r.result.split(",")[1]);
-      r.readAsDataURL(blob);
-    });
-
-    async function sendAudio(b64) {
-      $("send").disabled = true;
-      $("status").textContent = companion + " sun rahe/rahi hain…";
-      try {
-        const res = await fetch("/turn-audio", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ companion, audio_b64: b64 }),
-        });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        $("you").textContent = "Aap: " + (data.transcript || "(samajh nahi aaya)");
-        render(data);
-      } catch (e) { $("status").textContent = "Error: " + e.message; }
-      finally { $("send").disabled = false; }
-    }
-
-    $("mic").onclick = async () => {
-      if (mediaRecorder && mediaRecorder.state === "recording") { mediaRecorder.stop(); return; }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        chunks = [];
-        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-        mediaRecorder.onstop = async () => {
-          stream.getTracks().forEach((t) => t.stop());
-          $("mic").classList.remove("rec"); $("mic").textContent = "🎙";
-          const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
-          await sendAudio(await blobToB64(blob));
-        };
-        mediaRecorder.start();
-        $("mic").classList.add("rec"); $("mic").textContent = "⏹";
-        $("status").textContent = "Sun rahe hain… (🎙 phir dabaa kar bhejiye)";
-      } catch (e) { $("status").textContent = "Mic error: " + e.message; }
-    };
-
     $("send").onclick = sendText;
     $("text").addEventListener("keydown", (e) => {
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sendText();
     });
+
+    // --- mic ---
+    let recorder = null, chunks = [];
+    const toB64 = (blob) => new Promise((res) => {
+      const r = new FileReader(); r.onloadend = () => res(r.result.split(",")[1]); r.readAsDataURL(blob);
+    });
+    $("mic").onclick = async () => {
+      if (recorder && recorder.state === "recording") { recorder.stop(); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recorder = new MediaRecorder(stream); chunks = [];
+        recorder.ondataavailable = (e) => chunks.push(e.data);
+        recorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          $("mic").classList.remove("rec"); $("mic").textContent = "🎙";
+          const b64 = await toB64(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+          if (ready) ws.send(JSON.stringify({ type: "audio", companion, audio_b64: b64 }));
+        };
+        recorder.start();
+        $("mic").classList.add("rec"); $("mic").textContent = "⏹";
+        $("status").textContent = "sun rahe hain…";
+      } catch (e) { $("status").textContent = "Mic error: " + e.message; }
+    };
   </script>
 </body>
 </html>
