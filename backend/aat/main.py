@@ -22,6 +22,7 @@ from aat.audio import to_wav
 from aat.config import get_settings
 from aat.memory import MemoryStore
 from aat.personas import get_persona
+from aat.pron import assess as assess_pronunciation
 from aat.schemas import Companion
 from aat.stt import build_stt_router
 from aat.tts import AudioCache, build_tts_router
@@ -48,6 +49,15 @@ class AudioTurnRequest(BaseModel):
     companion: Companion = Companion.TARANA
     audio_b64: str
     language: str = "hi"  # the user speaks Hindi/Hinglish; STT transcribes that
+
+
+class PronounceRequest(BaseModel):
+    """A pronunciation attempt: the target Urdu word + the learner's recorded audio."""
+
+    target_word: str  # ideally the Urdu-script word the learner is attempting
+    audio_b64: str
+    companion: Companion = Companion.TARANA
+    language: str = "ur"
 
 
 @app.get("/healthz")
@@ -113,6 +123,28 @@ async def turn_audio(req: AudioTurnRequest) -> dict:
         )
         audio_b64 = base64.b64encode(audio).decode("ascii")
     return {"transcript": transcript, "turn": companion_turn.model_dump(), "audio_b64": audio_b64}
+
+
+@app.post("/pronounce")
+async def pronounce(req: PronounceRequest) -> dict:
+    """Assess the learner's pronunciation of a word + return a correct spoken reference."""
+    s = get_settings()
+    wav = await to_wav(base64.b64decode(req.audio_b64))
+    check = await assess_pronunciation(wav, req.target_word, s, language=req.language)
+    persona = get_persona(req.companion)
+    reference_audio_b64 = ""
+    voice_id = persona.voice_id(s)
+    if voice_id:
+        tts = build_tts_router(s, AudioCache(str(_STATIC.parent / "audio_cache")))
+        audio = await tts.synthesize(
+            req.target_word,
+            voice_id=voice_id,
+            stability=persona.stability,
+            language_code="ur",
+            seed=persona.seed(s),
+        )
+        reference_audio_b64 = base64.b64encode(audio).decode("ascii")
+    return {"check": check.model_dump(), "reference_audio_b64": reference_audio_b64}
 
 
 @app.websocket("/ws")

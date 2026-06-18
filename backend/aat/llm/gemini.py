@@ -95,6 +95,40 @@ class GeminiProvider:
             raise ProviderDownError("gemini returned empty response")
         return text
 
+    async def analyze_audio(
+        self, audio: bytes, mime_type: str, prompt: str, *, json_mode: bool = True
+    ) -> str:
+        """Send audio + a text prompt to Gemini (e.g. pronunciation assessment)."""
+        from google.genai import types
+
+        client = self._ensure_client()
+        audio_part = types.Part.from_bytes(data=audio, mime_type=mime_type)
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json" if json_mode else "text/plain",
+            temperature=0.3,
+            max_output_tokens=1024,
+        )
+        resp = None
+        for attempt in range(3):
+            try:
+                resp = await client.aio.models.generate_content(
+                    model=self._settings.gemini_model,
+                    contents=[prompt, audio_part],
+                    config=config,
+                )
+                break
+            except Exception as exc:  # noqa: BLE001 - mapped to taxonomy
+                if _is_rate_limit(exc):
+                    raise RateLimitError(f"gemini audio rate-limited: {exc}") from exc
+                if _is_transient(exc) and attempt < 2:
+                    await asyncio.sleep(1.5 * (attempt + 1))
+                    continue
+                raise ProviderDownError(f"gemini audio failed: {exc}") from exc
+        text = getattr(resp, "text", None)
+        if not text:
+            raise ProviderDownError("gemini audio returned empty response")
+        return text
+
 
 def _is_rate_limit(exc: Exception) -> bool:
     text = str(exc).lower()
