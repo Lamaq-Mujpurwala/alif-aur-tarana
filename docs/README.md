@@ -27,6 +27,7 @@
 | 12 | [`12-setup-and-api-keys.md`](12-setup-and-api-keys.md) | **One-time** guide to every service signup + API key (do this before building). |
 | 13 | [`13-mvp-build-plan.md`](13-mvp-build-plan.md) | The **local MVP** build sequence, lean tech choices, and the to-do checklist. |
 | 14 | [`14-companion-voice-prompts.md`](14-companion-voice-prompts.md) | Ready-to-paste ElevenLabs **Voice Design** prompts for Alif & Tarana + lines to audition them. |
+| 15 | [`15-elevenlabs-v3-mastery.md`](15-elevenlabs-v3-mastery.md) | Deep ElevenLabs v3 guide (stability, tags, language/accent, consistency) + the **final Urdu-script prompts**. |
 | — | [`inspiration/`](inspiration/) | Design & UX snapshots collected from reference products, with notes. |
 
 ---

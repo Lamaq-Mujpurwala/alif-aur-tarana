@@ -9,7 +9,7 @@ from aat.config import Settings
 
 @runtime_checkable
 class TTSProvider(Protocol):
-    """Synthesise speech audio (bytes) from tagged/plain text."""
+    """Synthesise speech audio (bytes) from tagged Urdu text."""
 
     name: str
     supports_emotion: bool  # True for ElevenLabs v3 audio tags
@@ -18,7 +18,13 @@ class TTSProvider(Protocol):
         ...
 
     async def synthesize(
-        self, text: str, *, voice_id: str, stability: str = "natural"
+        self,
+        text: str,
+        *,
+        voice_id: str,
+        stability: str = "natural",
+        language_code: str = "ur",
+        seed: int | None = None,
     ) -> bytes:
-        """Return audio bytes (mp3/wav) for the given text and voice."""
+        """Return audio bytes (mp3) for the given Urdu text and voice."""
         ...

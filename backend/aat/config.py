@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     elevenlabs_model: str = Field(default="eleven_v3", alias="ELEVENLABS_MODEL")
 
+    # ---- per-companion TTS seeds (pin for consistency; docs/15 §1) ----
+    alif_seed: int = Field(default=101, alias="ALIF_SEED")
+    tarana_seed: int = Field(default=202, alias="TARANA_SEED")
+
     def has(self, *keys: str) -> bool:
         """True if every named setting attribute is set (non-empty)."""
         return all(bool(getattr(self, k, None)) for k in keys)

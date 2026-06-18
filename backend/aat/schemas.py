@@ -62,6 +62,7 @@ class CompanionTurn(BaseModel):
 
     speech: str
     display: TriScript
+    english_note: str = ""  # short meaning shown on screen, never spoken (keeps accent clean)
     teach: TeachItem | None = None
     actions: list[ToolAction] = Field(default_factory=list)
     pronunciation_check: PronunciationCheck | None = None

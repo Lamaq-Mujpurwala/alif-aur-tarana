@@ -1,8 +1,8 @@
-"""ElevenLabs v3 TTS provider — the expressive Urdu voice (docs/02 §C).
+"""ElevenLabs v3 TTS provider — the expressive Urdu voice (docs/15).
 
-NOTE: verify the exact SDK surface once ELEVENLABS_API_KEY is set and `elevenlabs` is
-installed. v3 performs audio tags like [sighs]/[warmly]; stability is creative/natural/
-robust. Use 'natural' by default, 'creative' for signature emotional lines (docs/09 §2).
+Key v3 choices (docs/15): generate Urdu *script* text, enforce language_code="ur",
+default stability Natural (0.5) / Creative (0.0) for signature lines, and pin a per-
+companion seed for consistency. Audio tags like [warmly]/[sighs] are performed inline.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from aat.exceptions import MissingKeyError, ProviderDownError, RateLimitError
 
 logger = logging.getLogger(__name__)
 
-# v3 stability mode -> numeric setting (verify against SDK version).
+# v3 stability modes -> numeric API value (docs/15 §1).
 _STABILITY = {"creative": 0.0, "natural": 0.5, "robust": 1.0}
 
 
@@ -42,19 +42,32 @@ class ElevenLabsTTS:
         return self._client
 
     async def synthesize(
-        self, text: str, *, voice_id: str, stability: str = "natural"
+        self,
+        text: str,
+        *,
+        voice_id: str,
+        stability: str = "natural",
+        language_code: str = "ur",
+        seed: int | None = None,
     ) -> bytes:
         from elevenlabs import VoiceSettings
 
         client = self._ensure_client()
-        settings = VoiceSettings(stability=_STABILITY.get(stability, 0.5), similarity_boost=0.8)
+        voice_settings = VoiceSettings(
+            stability=_STABILITY.get(stability, 0.5), similarity_boost=0.75
+        )
+        kwargs: dict = {
+            "voice_id": voice_id,
+            "text": text,
+            "model_id": self._settings.elevenlabs_model,
+            "language_code": language_code,
+            "voice_settings": voice_settings,
+            "output_format": "mp3_44100_128",
+        }
+        if seed is not None:
+            kwargs["seed"] = seed
         try:
-            stream = client.text_to_speech.convert(
-                voice_id=voice_id,
-                model_id=self._settings.elevenlabs_model,
-                text=text,
-                voice_settings=settings,
-            )
+            stream = client.text_to_speech.convert(**kwargs)
             chunks = [chunk async for chunk in stream]
         except Exception as exc:  # noqa: BLE001 - mapped to taxonomy
             if "429" in str(exc) or "quota" in str(exc).lower():

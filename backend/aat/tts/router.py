@@ -45,6 +45,8 @@ class TTSRouter:
         *,
         voice_id: str,
         stability: str = "natural",
+        language_code: str = "ur",
+        seed: int | None = None,
         needs_emotion: bool = True,
     ) -> bytes:
         if self._cache is not None:
@@ -60,7 +62,13 @@ class TTSRouter:
                 continue
             tried = True
             try:
-                audio = await provider.synthesize(text, voice_id=voice_id, stability=stability)
+                audio = await provider.synthesize(
+                    text,
+                    voice_id=voice_id,
+                    stability=stability,
+                    language_code=language_code,
+                    seed=seed,
+                )
             except ProviderDownError as exc:
                 logger.warning("TTS provider '%s' failed: %s", provider.name, exc)
                 last_error = exc
