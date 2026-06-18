@@ -1,11 +1,12 @@
 """Gemini LLM provider (google-genai SDK).
 
-NOTE: verify the exact SDK surface once GEMINI_API_KEY is set and `google-genai` is
-installed (`uv sync`). The async path is `client.aio.models.generate_content`.
+Verified working with google-genai 2.8 via `client.aio.models.generate_content`.
+We set a generous max_output_tokens and no other length constraint (docs/15).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from aat.config import Settings
@@ -58,15 +59,25 @@ class GeminiProvider:
             system_instruction=system,
             response_mime_type="application/json" if json_mode else "text/plain",
             temperature=0.9,  # companions should feel human, not robotic
+            # Generous headroom so longer, flourishing replies + tri-script JSON never
+            # truncate. We deliberately do NOT constrain length tightly (docs/15).
+            max_output_tokens=4096,
         )
-        try:
-            resp = await client.aio.models.generate_content(
-                model=self._settings.gemini_model, contents=contents, config=config
-            )
-        except Exception as exc:  # noqa: BLE001 - mapped to our taxonomy below
-            if _is_rate_limit(exc):
-                raise RateLimitError(f"gemini rate-limited: {exc}") from exc
-            raise ProviderDownError(f"gemini failed: {exc}") from exc
+        resp = None
+        for attempt in range(3):  # retry transient 503/UNAVAILABLE with backoff
+            try:
+                resp = await client.aio.models.generate_content(
+                    model=self._settings.gemini_model, contents=contents, config=config
+                )
+                break
+            except Exception as exc:  # noqa: BLE001 - mapped to our taxonomy below
+                if _is_rate_limit(exc):
+                    raise RateLimitError(f"gemini rate-limited: {exc}") from exc
+                if _is_transient(exc) and attempt < 2:
+                    await asyncio.sleep(1.5 * (attempt + 1))
+                    logger.warning("gemini transient error, retrying (%d): %s", attempt + 1, exc)
+                    continue
+                raise ProviderDownError(f"gemini failed: {exc}") from exc
         text = getattr(resp, "text", None)
         if not text:
             raise ProviderDownError("gemini returned empty response")
@@ -76,3 +87,8 @@ class GeminiProvider:
 def _is_rate_limit(exc: Exception) -> bool:
     text = str(exc).lower()
     return "429" in text or "rate" in text or "quota" in text or "resource_exhausted" in text
+
+
+def _is_transient(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "503" in text or "unavailable" in text or "overloaded" in text or "500" in text
