@@ -1,23 +1,23 @@
 {
-  "_note": "SEED SAMPLE for local dev only. Roman + Devanagari for famous, widely-known couplets. The 'urdu' (Nastaʿlīq) field is intentionally left blank — fill it ONLY from a verified source (e.g. Rekhta) before shipping, per docs/01 §8 (never mis-render beloved poetry). Always credit Rekhta Foundation in the UI. No official Rekhta API exists (docs/04 §1).",
+  "_note": "SEED corpus for local dev. Urdu/Devanagari/Roman for famous, widely-known couplets, used to GROUND the companions' quotes (they may only quote from here). Verify the exact text against Rekhta before shipping (docs/01 §8 — never mis-render beloved poetry). Always credit Rekhta Foundation in the UI. No official Rekhta API exists (docs/04 §1).",
   "couplets": [
     {
       "id": "ghalib-hazaaron-khwahishen",
       "poet": "Mirza Ghalib",
       "theme": ["desire", "longing", "regret"],
+      "urdu": "ہزاروں خواہشیں ایسی کہ ہر خواہش پہ دم نکلے / بہت نکلے مرے ارمان لیکن پھر بھی کم نکلے",
       "roman": "hazaaron khwahishen aisi ki har khwahish pe dam nikle / bohot nikle mere armaan lekin phir bhi kam nikle",
       "devanagari": "हज़ारों ख़्वाहिशें ऐसी कि हर ख़्वाहिश पे दम निकले / बहुत निकले मेरे अरमान लेकिन फिर भी कम निकले",
-      "urdu": "",
       "gloss": "A thousand desires, each worth dying for; many of mine were fulfilled, yet still too few.",
       "source_attribution": "Rekhta Foundation (verify text)"
     },
     {
       "id": "faraz-ranjish-hi-sahi",
       "poet": "Ahmed Faraz",
-      "theme": ["separation", "love", "longing"],
+      "theme": ["separation", "love", "longing", "ranjish"],
+      "urdu": "رنجش ہی سہی دل ہی دکھانے کے لیے آ / آ پھر سے مجھے چھوڑ کے جانے کے لیے آ",
       "roman": "ranjish hi sahi dil hi dukhane ke liye aa / aa phir se mujhe chhod ke jaane ke liye aa",
       "devanagari": "रंजिश ही सही दिल ही दुखाने के लिए आ / आ फिर से मुझे छोड़ के जाने के लिए आ",
-      "urdu": "",
       "gloss": "Let it be resentment then — come, even if only to hurt me; come, even if only to leave again.",
       "source_attribution": "Rekhta Foundation (verify text)"
     },
@@ -25,19 +25,29 @@
       "id": "faiz-gulon-mein-rang",
       "poet": "Faiz Ahmed Faiz",
       "theme": ["spring", "longing", "hope"],
+      "urdu": "گلوں میں رنگ بھرے بادِ نوبہار چلے / چلے بھی آؤ کہ گلشن کا کاروبار چلے",
       "roman": "gulon mein rang bhare baad-e-naubahaar chale / chale bhi aao ki gulshan ka kaarobaar chale",
       "devanagari": "गुलों में रंग भरे बाद-ए-नौबहार चले / चले भी आओ कि गुलशन का कारोबार चले",
-      "urdu": "",
       "gloss": "May the spring breeze fill the flowers with colour — do come, so the garden's life may go on.",
+      "source_attribution": "Rekhta Foundation (verify text)"
+    },
+    {
+      "id": "ghalib-ishq-par-zor-nahin",
+      "poet": "Mirza Ghalib",
+      "theme": ["ishq", "love", "fate", "fire"],
+      "urdu": "عشق پر زور نہیں ہے یہ وہ آتش غالبؔ / کہ لگائے نہ لگے اور بجھائے نہ بنے",
+      "roman": "ishq par zor nahin hai ye woh aatish ghalib / ki lagaaye na lage aur bujhaaye na bane",
+      "devanagari": "इश्क़ पर ज़ोर नहीं है ये वो आतिश ग़ालिब / कि लगाए न लगे और बुझाए न बने",
+      "gloss": "Love is not in our control — it is that fire, Ghalib, that cannot be lit at will, nor put out.",
       "source_attribution": "Rekhta Foundation (verify text)"
     },
     {
       "id": "jaun-ab-nahin-koi-baat",
       "poet": "Jaun Elia",
       "theme": ["irony", "modern", "alienation"],
+      "urdu": "اب نہیں کوئی بات خطرے کی / اب سبھی کو سبھی سے خطرہ ہے",
       "roman": "ab nahin koi baat khatre ki / ab sabhi ko sabhi se khatra hai",
       "devanagari": "अब नहीं कोई बात ख़तरे की / अब सभी को सभी से ख़तरा है",
-      "urdu": "",
       "gloss": "There is no single danger to speak of now — now everyone is a danger to everyone.",
       "source_attribution": "Rekhta Foundation (verify text)"
     }

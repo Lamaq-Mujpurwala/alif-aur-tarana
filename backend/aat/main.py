@@ -20,6 +20,7 @@ from aat import __version__
 from aat.agent import respond
 from aat.audio import to_wav
 from aat.config import get_settings
+from aat.memory import MemoryStore
 from aat.personas import get_persona
 from aat.schemas import Companion
 from aat.stt import build_stt_router
@@ -31,6 +32,7 @@ logger = logging.getLogger("aat")
 app = FastAPI(title="Alif Aur Tarana API", version=__version__)
 
 _STATIC = Path(__file__).resolve().parent.parent / "static"
+_MEMORY = MemoryStore(str(_STATIC.parent / "aat.db"))
 
 
 class TurnRequest(BaseModel):
@@ -73,7 +75,7 @@ def readiness() -> dict[str, bool]:
 async def turn(req: TurnRequest) -> dict:
     """Produce one in-character companion turn + its voiced audio (base64 mp3)."""
     s = get_settings()
-    companion_turn = await respond(req.companion, req.text, s)
+    companion_turn = await respond(req.companion, req.text, s, memory=_MEMORY)
     persona = get_persona(req.companion)
     audio_b64 = ""
     voice_id = persona.voice_id(s)
@@ -96,7 +98,7 @@ async def turn_audio(req: AudioTurnRequest) -> dict:
     s = get_settings()
     wav = await to_wav(base64.b64decode(req.audio_b64))
     transcript = await build_stt_router(s).transcribe(wav, language=req.language)
-    companion_turn = await respond(req.companion, transcript, s)
+    companion_turn = await respond(req.companion, transcript, s, memory=_MEMORY)
     persona = get_persona(req.companion)
     audio_b64 = ""
     voice_id = persona.voice_id(s)
