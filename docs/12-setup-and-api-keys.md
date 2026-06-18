@@ -139,3 +139,31 @@ WHISPER_MODEL=large-v3        # or 'medium' to save VRAM
 - [x] Azure = **deferred** until before real usage
 
 > Once the cloud keys + local installs are ticked, we go straight to [`13-mvp-build-plan.md`](13-mvp-build-plan.md) and start building.
+
+
+---
+
+## §8 — Gemini via Vertex AI (no rate-limit) — DONE 19 Jun 2026
+
+The free Gemini API key on this account is ~20 req/day. To remove the cap, Gemini now runs
+through **Vertex AI** on a billed GCP project (draws from the $300 free credits). Steps used
+(account `lamaqraitlabs@gmail.com`, gcloud already authed, ADC already present):
+
+```bash
+gcloud projects create alif-aur-tarana-30362 --name="Alif Aur Tarana"
+gcloud billing projects link alif-aur-tarana-30362 --billing-account=017E3A-AB1942-821582
+gcloud services enable aiplatform.googleapis.com --project=alif-aur-tarana-30362
+gcloud auth application-default set-quota-project alif-aur-tarana-30362
+```
+
+Then in `backend/.env`:
+
+```dotenv
+GEMINI_USE_VERTEX="true"
+GOOGLE_CLOUD_PROJECT="alif-aur-tarana-30362"
+GCP_LOCATION="global"
+```
+
+`aat/llm/gemini.py` uses `genai.Client(vertexai=True, project=..., location=...)` (ADC) when
+`GEMINI_USE_VERTEX=true`, else the API-key mode. Verified: gemini-2.5-flash via Vertex, no RPD
+cap, persona eval 4/4 clean. Monitor spend in the GCP console (Billing).

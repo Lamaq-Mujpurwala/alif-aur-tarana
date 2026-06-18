@@ -29,16 +29,28 @@ class GeminiProvider:
         self._client = None  # lazily created so import never requires a key
 
     def available(self, settings: Settings) -> bool:
+        if settings.gemini_use_vertex:
+            return bool(settings.gcp_project)
         return bool(settings.gemini_api_key)
 
     def _ensure_client(self):
         if self._client is not None:
             return self._client
-        if not self._settings.gemini_api_key:
-            raise MissingKeyError("GEMINI_API_KEY is not set")
         from google import genai  # imported lazily
 
-        self._client = genai.Client(api_key=self._settings.gemini_api_key)
+        if self._settings.gemini_use_vertex:
+            if not self._settings.gcp_project:
+                raise MissingKeyError("GOOGLE_CLOUD_PROJECT is not set for Vertex mode")
+            # Uses Application Default Credentials (gcloud ADC); no API key, no RPD cap.
+            self._client = genai.Client(
+                vertexai=True,
+                project=self._settings.gcp_project,
+                location=self._settings.gcp_location,
+            )
+        else:
+            if not self._settings.gemini_api_key:
+                raise MissingKeyError("GEMINI_API_KEY is not set")
+            self._client = genai.Client(api_key=self._settings.gemini_api_key)
         return self._client
 
     async def complete(

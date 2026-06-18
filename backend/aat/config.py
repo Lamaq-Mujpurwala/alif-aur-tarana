@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
     elevenlabs_model: str = Field(default="eleven_v3", alias="ELEVENLABS_MODEL")
 
+    # ---- Gemini via Vertex AI (uses GCP project + ADC; no RPD cap, bills to credits) ----
+    gemini_use_vertex: bool = Field(default=False, alias="GEMINI_USE_VERTEX")
+    gcp_project: str | None = Field(default=None, alias="GOOGLE_CLOUD_PROJECT")
+    gcp_location: str = Field(default="global", alias="GCP_LOCATION")
+
     # ---- per-companion TTS seeds (pin for consistency; docs/15 §1) ----
     alif_seed: int = Field(default=101, alias="ALIF_SEED")
     tarana_seed: int = Field(default=202, alias="TARANA_SEED")
