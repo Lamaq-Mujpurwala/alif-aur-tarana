@@ -218,3 +218,18 @@ Everything else in the system stays quiet so this moment lands. That is the brie
 - **Source/refine components** (21st.dev, framer.com) for: the amplitude orb (→ chirāgh), an ink/shimmer text reveal, a smooth cross-fade. Re-skin everything to these tokens; never ship a component in its stock look.
 
 Keep this file and `tokens.css` updated as the system evolves — they are the contract every surface integrates against.
+
+---
+
+## 12. Component sourcing & libraries (researched 19 Jun 2026)
+
+**Hand-build the signature.** The chirāgh, Nastaʿlīq ink-reveal, tri-script block, and companion cross-fade are built with **Framer Motion + CSS** — too bespoke (RTL Nastaʿlīq, our tokens, audio-reactivity) for drop-ins, and control matters most here.
+
+**Framer Marketplace** (`framer.com/community/marketplace` — *Templates · Components · Vectors · Plugins*; free **and** paid). Items are made for the Framer no-code tool, **but importable into our Next.js app**:
+- **`unframer`** — free OSS CLI that downloads a Framer component as React/JS (SSR-ready, emits `"use client"`). The pragmatic bridge.
+- React-Export plugins (Proofly, Tommy D. Rossi) — paid, for unlimited exports.
+- Relevant component categories: **Backgrounds (524)** — a grain / aurora / gradient-mesh for the night ground; **Typography (603)** — text reveals (`stack-text-reveal`, `dualwavetext`) as *inspiration* for the ink-reveal; **Interactions (1.8K)**. **Vectors** skew generic/Western (Icons/Shapes/`stars-and-sparkles` for gold glints) — **not** a good source for tazhīb ornament, so hand-draw simple gold ornaments as SVG.
+
+**21st.dev** — preferred for **direct copy-paste React/Tailwind/Framer-Motion** components (e.g. an audio visualiser → re-skin as the chirāgh; a shimmer-text reveal). Cleanest for code.
+
+**Rule:** never ship a sourced component in its stock look — always re-skin to `tokens.css`. Reach for the marketplace only when a bespoke build would be materially worse (e.g. a complex WebGL background).

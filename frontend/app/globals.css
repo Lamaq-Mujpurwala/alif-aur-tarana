@@ -1,0 +1,148 @@
+@import url("https://api.fontshare.com/v2/css?f[]=switzer@400,500,600&f[]=zodiak@400,500&display=swap");
+@import "tailwindcss";
+
+/* ============================================================================
+   Alif Aur Tarana — Shab-e-Mehfil tokens (see /design/DESIGN.md + tokens.css)
+   ========================================================================== */
+
+@property --accent { syntax: "<color>"; inherits: true; initial-value: #c66a6a; }
+@property --glow   { syntax: "<color>"; inherits: true; initial-value: #e0a35a; }
+
+:root {
+  /* core: the room */
+  --shab: #16120e;
+  --shab-2: #1c160f;
+  --raqam: #221a13;
+  --parchment: #ece0cb;
+  --parchment-dim: #a1907b;
+  --hairline: rgba(236, 224, 203, 0.1);
+
+  /* gold leaf */
+  --tila: #c8a24a;
+  --tila-glint: #e7cb7e;
+  --tila-ink: #5a4a2e;
+
+  /* companion palettes */
+  --gulaab: #c66a6a;
+  --shama: #e0a35a;
+  --chaand: #8fb3ae;
+  --noor: #c7d0d4;
+
+  /* runtime aliases (default Alif) */
+  --accent: var(--gulaab);
+  --glow: var(--shama);
+  --accent-soft: #3a211c;
+
+  /* faces (next/font sets --font-gulzar etc. on <body>; Fontshare via @import) */
+  --font-nastaliq: var(--font-gulzar), var(--font-noto-nastaliq), serif;
+  --font-deva: var(--font-tiro), "Noto Serif Devanagari", serif;
+  --font-display: "Zodiak", Georgia, serif;
+  --font-roman: "Zodiak", Georgia, serif;
+  --font-body: "Switzer", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+
+  /* fluid sizes */
+  --fs-nastaliq: clamp(2.4rem, 6vw, 4.6rem);
+  --fs-display: clamp(1.6rem, 4vw, 2.6rem);
+  --fs-roman: clamp(1.05rem, 2.2vw, 1.35rem);
+
+  /* space + motion */
+  --measure: 640px;
+  --radius-2: 14px;
+  --ease-ink: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-3: 600ms;
+}
+
+.with-alif { --accent: var(--gulaab); --glow: var(--shama); --accent-soft: #3a211c; }
+.with-tarana { --accent: var(--chaand); --glow: var(--noor); --accent-soft: #1e2a29; }
+
+html { transition: --accent var(--dur-3) var(--ease-soft), --glow var(--dur-3) var(--ease-soft); }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background:
+    radial-gradient(120% 75% at 50% 16%, color-mix(in oklab, var(--glow) 10%, transparent), transparent 58%),
+    linear-gradient(var(--shab-2), var(--shab));
+  background-attachment: fixed;
+  color: var(--parchment);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- type helpers ---- */
+.nastaliq { font-family: var(--font-nastaliq); direction: rtl; text-align: center;
+  font-size: var(--fs-nastaliq); line-height: 2.05; color: var(--parchment); }
+.roman { font-family: var(--font-roman); font-style: italic; font-size: var(--fs-roman); color: var(--parchment-dim); }
+.deva { font-family: var(--font-deva); color: var(--parchment-dim); }
+.label { font-family: var(--font-body); font-size: 0.72rem; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--parchment-dim); }
+.wordmark { font-family: var(--font-nastaliq); direction: rtl; font-size: 1.9rem; color: var(--parchment); line-height: 1; }
+.taught { color: var(--accent); }
+
+/* ---- the chiragh (companion lamp) ---- */
+.chiragh {
+  --level: 0;
+  width: 132px; height: 132px; border-radius: 999px; position: relative;
+  background: radial-gradient(circle at 50% 45%,
+    color-mix(in oklab, var(--glow) 90%, white) 0%,
+    var(--glow) 26%,
+    color-mix(in oklab, var(--glow) 55%, var(--shab)) 55%,
+    transparent 72%);
+  box-shadow:
+    0 0 calc(60px + var(--level) * 120px) calc(8px + var(--level) * 28px)
+      color-mix(in oklab, var(--glow) calc(38% + var(--level) * 38%), transparent),
+    inset 0 0 30px color-mix(in oklab, var(--tila) 30%, transparent);
+  animation: breathe 5s var(--ease-soft) infinite;
+}
+.chiragh::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--tila) 40%, transparent); opacity: 0.5;
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.035); opacity: 1; }
+}
+
+/* ---- controls ---- */
+.sigil {
+  display: grid; place-items: center; width: 46px; height: 46px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--hairline); color: var(--parchment-dim);
+  cursor: pointer; transition: all 200ms var(--ease-soft);
+  font-family: var(--font-nastaliq); font-size: 1.4rem; line-height: 1;
+}
+.sigil[data-active="true"] {
+  color: var(--parchment); border-color: color-mix(in oklab, var(--accent) 70%, transparent);
+  box-shadow: 0 0 22px color-mix(in oklab, var(--glow) 45%, transparent);
+}
+.qalam {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: color-mix(in oklab, var(--raqam) 92%, transparent);
+  border: 1px solid var(--hairline); border-radius: var(--radius-2);
+  padding: 8px 8px 8px 18px; transition: border-color 200ms;
+}
+.qalam:focus-within { border-color: color-mix(in oklab, var(--tila) 55%, transparent); }
+.qalam input {
+  flex: 1; background: transparent; border: none; outline: none; color: var(--parchment);
+  font-family: var(--font-body); font-size: 1rem;
+}
+.qalam input::placeholder { color: color-mix(in oklab, var(--parchment-dim) 80%, transparent); }
+.btn-icon {
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px;
+  border: none; cursor: pointer; transition: all 180ms var(--ease-soft); font-size: 1.05rem;
+  background: transparent; color: var(--parchment-dim);
+}
+.btn-icon:hover { color: var(--parchment); }
+.btn-send { background: var(--accent); color: var(--shab); }
+.btn-send:hover { filter: brightness(1.08); }
+.btn-mic[data-rec="true"] { background: var(--gulaab); color: var(--parchment); }
+
+/* ---- focus (gold, always visible) ---- */
+:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--shab), 0 0 0 4px var(--tila); border-radius: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chiragh { animation: none; }
+  *, *::before, *::after { transition-duration: 120ms !important; }
+}

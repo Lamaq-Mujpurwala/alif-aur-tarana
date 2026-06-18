@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -31,6 +32,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("aat")
 
 app = FastAPI(title="Alif Aur Tarana API", version=__version__)
+
+# Allow the Next.js dev/preview client (and same-origin) to call the HTTP endpoints.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _STATIC = Path(__file__).resolve().parent.parent / "static"
 _MEMORY = MemoryStore(str(_STATIC.parent / "aat.db"))
