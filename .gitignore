@@ -1,0 +1,47 @@
+# ---- secrets ----
+.env
+*.env
+!*.env.example
+**/.env
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.log
+
+# ---- audio / model cache ----
+*.wav
+*.mp3
+*.flac
+.cache/
+models/
+audio_cache/
+
+# ---- node / next ----
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+
+# ---- os / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ---- local data (keep seed, ignore generated) ----
+data/generated/
+backend/aat.db
+backend/*.sqlite3
+backend/audio_cache/
+
+# ---- playwright scratch ----
+.playwright-mcp/

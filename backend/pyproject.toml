@@ -1,0 +1,44 @@
+[project]
+name = "alif-aur-tarana-api"
+version = "0.0.1"
+description = "Alif Aur Tarana — voice companion backend (STT -> LLM -> TTS cascade)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "python-dotenv>=1.0",
+    "httpx>=0.27",
+    "google-genai>=0.3",
+    "elevenlabs>=1.9",
+    "groq>=0.11",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+# Local speech-to-text on your RTX 4060 (free, unlimited fallback)
+stt-local = ["faster-whisper>=1.0", "sounddevice>=0.4"]
+# Agent tools
+tools = ["youtube-transcript-api>=1.0", "yt-dlp>=2024.0", "ddgs>=9.0"]
+# Long-term memory (Phase 2)
+memory = ["mem0ai>=0.1"]
+# Voice pipeline orchestration (T3)
+voice = ["pipecat-ai>=0.0.50"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aat"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

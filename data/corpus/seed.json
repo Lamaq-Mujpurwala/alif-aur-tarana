@@ -1,0 +1,45 @@
+{
+  "_note": "SEED SAMPLE for local dev only. Roman + Devanagari for famous, widely-known couplets. The 'urdu' (Nastaʿlīq) field is intentionally left blank — fill it ONLY from a verified source (e.g. Rekhta) before shipping, per docs/01 §8 (never mis-render beloved poetry). Always credit Rekhta Foundation in the UI. No official Rekhta API exists (docs/04 §1).",
+  "couplets": [
+    {
+      "id": "ghalib-hazaaron-khwahishen",
+      "poet": "Mirza Ghalib",
+      "theme": ["desire", "longing", "regret"],
+      "roman": "hazaaron khwahishen aisi ki har khwahish pe dam nikle / bohot nikle mere armaan lekin phir bhi kam nikle",
+      "devanagari": "हज़ारों ख़्वाहिशें ऐसी कि हर ख़्वाहिश पे दम निकले / बहुत निकले मेरे अरमान लेकिन फिर भी कम निकले",
+      "urdu": "",
+      "gloss": "A thousand desires, each worth dying for; many of mine were fulfilled, yet still too few.",
+      "source_attribution": "Rekhta Foundation (verify text)"
+    },
+    {
+      "id": "faraz-ranjish-hi-sahi",
+      "poet": "Ahmed Faraz",
+      "theme": ["separation", "love", "longing"],
+      "roman": "ranjish hi sahi dil hi dukhane ke liye aa / aa phir se mujhe chhod ke jaane ke liye aa",
+      "devanagari": "रंजिश ही सही दिल ही दुखाने के लिए आ / आ फिर से मुझे छोड़ के जाने के लिए आ",
+      "urdu": "",
+      "gloss": "Let it be resentment then — come, even if only to hurt me; come, even if only to leave again.",
+      "source_attribution": "Rekhta Foundation (verify text)"
+    },
+    {
+      "id": "faiz-gulon-mein-rang",
+      "poet": "Faiz Ahmed Faiz",
+      "theme": ["spring", "longing", "hope"],
+      "roman": "gulon mein rang bhare baad-e-naubahaar chale / chale bhi aao ki gulshan ka kaarobaar chale",
+      "devanagari": "गुलों में रंग भरे बाद-ए-नौबहार चले / चले भी आओ कि गुलशन का कारोबार चले",
+      "urdu": "",
+      "gloss": "May the spring breeze fill the flowers with colour — do come, so the garden's life may go on.",
+      "source_attribution": "Rekhta Foundation (verify text)"
+    },
+    {
+      "id": "jaun-ab-nahin-koi-baat",
+      "poet": "Jaun Elia",
+      "theme": ["irony", "modern", "alienation"],
+      "roman": "ab nahin koi baat khatre ki / ab sabhi ko sabhi se khatra hai",
+      "devanagari": "अब नहीं कोई बात ख़तरे की / अब सभी को सभी से ख़तरा है",
+      "urdu": "",
+      "gloss": "There is no single danger to speak of now — now everyone is a danger to everyone.",
+      "source_attribution": "Rekhta Foundation (verify text)"
+    }
+  ]
+}
