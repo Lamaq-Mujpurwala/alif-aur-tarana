@@ -17,6 +17,7 @@
                   border-radius:12px; cursor:pointer; font-size:15px; transition:.15s; }
     .who button.active { border-color:var(--maroon); color:var(--maroon); box-shadow:0 1px 0 var(--maroon) inset; }
     .card { background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; margin:14px 0; }
+    .you { color:var(--muted); font-size:14px; margin:6px 2px; }
     .urdu { font-size:30px; line-height:1.9; direction:rtl; text-align:right;
             font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq",serif; }
     .roman { font-size:16px; color:#4a433c; margin-top:10px; }
@@ -25,8 +26,10 @@
     .row { display:flex; gap:10px; margin-top:14px; }
     textarea { flex:1; padding:12px; border:1px solid var(--line); border-radius:12px;
                font-size:15px; resize:vertical; min-height:48px; }
-    .send { padding:0 20px; border:none; background:var(--maroon); color:#fff;
+    .send { padding:0 18px; border:none; background:var(--maroon); color:#fff;
             border-radius:12px; cursor:pointer; font-size:15px; }
+    .mic { background:#3a3633; }
+    .mic.rec { background:#b3242f; }
     .send:disabled { opacity:.5; cursor:default; }
     .status { color:var(--muted); font-size:13px; min-height:18px; margin-top:8px; }
     audio { width:100%; margin-top:12px; }
@@ -35,7 +38,7 @@
 <body>
   <div class="wrap">
     <h1>Alif <span style="color:var(--maroon)">aur</span> Tarana</h1>
-    <p class="sub">Urdu, mehsoos kijiye. Talk to a companion — they answer in voice, tri-script.</p>
+    <p class="sub">Urdu, mehsoos kijiye. Type or talk — they reply in voice, tri-script.</p>
 
     <div class="who">
       <button id="alif" class="active">Alif — the romantic</button>
@@ -45,8 +48,10 @@
     <div class="row">
       <textarea id="text" placeholder="Kuch poochhiye… e.g. 'firaaq' ka matlab samjhao"></textarea>
       <button id="send" class="send">Bhejiye</button>
+      <button id="mic" class="send mic" title="Bol kar poochhiye">🎙</button>
     </div>
     <div class="status" id="status"></div>
+    <div class="you" id="you"></div>
 
     <div class="card" id="out" style="display:none">
       <div class="urdu" id="urdu"></div>
@@ -59,7 +64,9 @@
 
   <script>
     let companion = "alif";
+    let mediaRecorder = null, chunks = [];
     const $ = (id) => document.getElementById(id);
+
     for (const id of ["alif", "tarana"]) {
       $(id).onclick = () => {
         companion = id;
@@ -67,36 +74,79 @@
         $("tarana").classList.toggle("active", id === "tarana");
       };
     }
-    async function send() {
+
+    function render(data) {
+      const d = data.turn.display;
+      $("urdu").textContent = d.urdu;
+      $("roman").textContent = d.roman;
+      $("deva").textContent = d.devanagari;
+      $("note").textContent = data.turn.english_note || "";
+      if (data.audio_b64) $("audio").src = "data:audio/mp3;base64," + data.audio_b64;
+      $("out").style.display = "block";
+      $("status").textContent = "";
+    }
+
+    async function sendText() {
       const text = $("text").value.trim();
       if (!text) return;
+      $("you").textContent = "Aap: " + text;
       $("send").disabled = true;
       $("status").textContent = companion + " soch rahe/rahi hain…";
       try {
         const res = await fetch("/turn", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ companion, text }),
         });
         if (!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
-        const d = data.turn.display;
-        $("urdu").textContent = d.urdu;
-        $("roman").textContent = d.roman;
-        $("deva").textContent = d.devanagari;
-        $("note").textContent = data.turn.english_note || "";
-        if (data.audio_b64) $("audio").src = "data:audio/mp3;base64," + data.audio_b64;
-        $("out").style.display = "block";
-        $("status").textContent = "";
-      } catch (e) {
-        $("status").textContent = "Error: " + e.message;
-      } finally {
-        $("send").disabled = false;
-      }
+        render(await res.json());
+      } catch (e) { $("status").textContent = "Error: " + e.message; }
+      finally { $("send").disabled = false; }
     }
-    $("send").onclick = send;
+
+    const blobToB64 = (blob) => new Promise((resolve) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(r.result.split(",")[1]);
+      r.readAsDataURL(blob);
+    });
+
+    async function sendAudio(b64) {
+      $("send").disabled = true;
+      $("status").textContent = companion + " sun rahe/rahi hain…";
+      try {
+        const res = await fetch("/turn-audio", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ companion, audio_b64: b64 }),
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        $("you").textContent = "Aap: " + (data.transcript || "(samajh nahi aaya)");
+        render(data);
+      } catch (e) { $("status").textContent = "Error: " + e.message; }
+      finally { $("send").disabled = false; }
+    }
+
+    $("mic").onclick = async () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") { mediaRecorder.stop(); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        chunks = [];
+        mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          stream.getTracks().forEach((t) => t.stop());
+          $("mic").classList.remove("rec"); $("mic").textContent = "🎙";
+          const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
+          await sendAudio(await blobToB64(blob));
+        };
+        mediaRecorder.start();
+        $("mic").classList.add("rec"); $("mic").textContent = "⏹";
+        $("status").textContent = "Sun rahe hain… (🎙 phir dabaa kar bhejiye)";
+      } catch (e) { $("status").textContent = "Mic error: " + e.message; }
+    };
+
+    $("send").onclick = sendText;
     $("text").addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) send();
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sendText();
     });
   </script>
 </body>

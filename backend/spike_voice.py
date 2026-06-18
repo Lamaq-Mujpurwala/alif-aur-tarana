@@ -1,8 +1,6 @@
-"""T1 voice spike: text -> Gemini (in persona) -> Urdu JSON -> ElevenLabs v3 -> mp3.
+"""T1/T2 voice spike: text -> agent.respond() (Gemini, persona, purity guard) -> v3 mp3.
 
-Proves the hard part: the companions produce in-character Urdu-script speech that the v3
-engine voices with a real Urdu accent. Run: `uv run python spike_voice.py`.
-Generates several out/*.mp3 examples to audition (varied intents, new flourishing endings).
+Generates several out/*.mp3 examples to audition. Run: `uv run python spike_voice.py`.
 """
 
 from __future__ import annotations
@@ -10,62 +8,48 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 import sys
 from pathlib import Path
 
-# A stale OS-level GROQ_API_KEY (ends dxP5) shadows the valid key in .env (env > .env).
-# Drop it so the .env Groq key works as a real fallback during this spike.
-os.environ.pop("GROQ_API_KEY", None)
-
-from aat.config import get_settings
-from aat.llm import build_llm_router
-from aat.llm.base import LLMMessage
-from aat.personas import get_persona
-from aat.schemas import Companion, CompanionTurn
-from aat.tts import AudioCache, build_tts_router
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("spike")
-
-# Windows consoles default to cp1252 and choke when printing Urdu; force UTF-8.
+# Windows consoles default to cp1252 and choke on Urdu; force UTF-8.
 try:
     sys.stdout.reconfigure(encoding="utf-8")
 except (AttributeError, ValueError):
     pass
 
-_FENCE = re.compile(r"```(?:json)?|```")
+# A stale OS-level GROQ_API_KEY (ends dxP5) shadows the valid key in .env (env > .env).
+# Drop it so the .env Groq key works as a real fallback during this spike.
+os.environ.pop("GROQ_API_KEY", None)
 
-# (companion, what the user says, short label for the output filename)
+from aat.agent import respond  # noqa: E402 - after env fix-up
+from aat.config import get_settings  # noqa: E402
+from aat.personas import get_persona  # noqa: E402
+from aat.schemas import Companion  # noqa: E402
+from aat.tts import AudioCache, build_tts_router  # noqa: E402
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("spike")
+
+# (companion, what the user says, short label) — chosen to PROVOKE wit, sarcasm,
+# leg-pulling and honesty (not sycophancy). Friends, not servants.
 SAMPLES: list[tuple[Companion, str, str]] = [
-    (Companion.TARANA, "tarana 'ranjish' ka matlab samjhao na", "ranjish"),
-    (Companion.TARANA, "ye 'takhayyul' kya hota hai? bada sundar lafz lagta hai", "takhayyul"),
-    (Companion.ALIF, "Alif yaar mujhe kuch romantic sa sunao", "romantic"),
-    (Companion.ALIF, "ishq aur mohabbat mein kya farq hai", "ishq-mohabbat"),
-    (Companion.ALIF, "aaj dil thoda udaas hai", "udaas"),
+    (Companion.ALIF, "main toh Urdu ka ustaad hoon, mujhe sab aata hai", "wit-brag"),
+    (Companion.ALIF, "bas jaldi se ek shaayari bata do, mere paas time nahi hai", "wit-lazy"),
+    (Companion.ALIF, "Alif tum bade hi romantic ho yaar, kisi pe line maarte ho kya", "wit-flirt"),
+    (Companion.TARANA, "Urdu aur Hindi toh bilkul same hain na, koi farq nahi", "wit-challenge"),
+    (Companion.TARANA, "maine 'qaaf' ko 'k' bol diya, itna farq thodi padta hai", "wit-cheeky"),
+    (Companion.TARANA, "Ghalib ne cricket pe koi sher likha tha kya?", "wit-silly"),
 ]
-
-
-def _parse_turn(raw: str) -> CompanionTurn:
-    """Parse the LLM reply into a CompanionTurn, tolerating stray markdown fences."""
-    cleaned = _FENCE.sub("", raw).strip()
-    return CompanionTurn.model_validate_json(cleaned)
 
 
 async def run(companion: Companion, user_text: str, label: str, out_dir: Path) -> None:
     s = get_settings()
     persona = get_persona(companion)
-    llm = build_llm_router(s)
     tts = build_tts_router(s, AudioCache(str(out_dir / "cache")))
 
     print(f"\n========== {persona.display_name} / {label} ==========")
     print(f"user: {user_text}")
-    raw = await llm.complete(
-        [LLMMessage(role="user", content=user_text)],
-        system=persona.system_prompt,
-        json_mode=True,
-    )
-    turn = _parse_turn(raw)
+    turn = await respond(companion, user_text, s)
     print("URDU  :", turn.display.urdu)
     print("ROMAN :", turn.display.roman)
     if turn.english_note:

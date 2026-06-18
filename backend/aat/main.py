@@ -18,9 +18,11 @@ from pydantic import BaseModel
 
 from aat import __version__
 from aat.agent import respond
+from aat.audio import to_wav
 from aat.config import get_settings
 from aat.personas import get_persona
 from aat.schemas import Companion
+from aat.stt import build_stt_router
 from aat.tts import AudioCache, build_tts_router
 
 logging.basicConfig(level=logging.INFO)
@@ -36,6 +38,14 @@ class TurnRequest(BaseModel):
 
     companion: Companion = Companion.TARANA
     text: str
+
+
+class AudioTurnRequest(BaseModel):
+    """A spoken turn: base64-encoded audio from the client's mic."""
+
+    companion: Companion = Companion.TARANA
+    audio_b64: str
+    language: str = "hi"  # the user speaks Hindi/Hinglish; STT transcribes that
 
 
 @app.get("/healthz")
@@ -78,6 +88,29 @@ async def turn(req: TurnRequest) -> dict:
         )
         audio_b64 = base64.b64encode(audio).decode("ascii")
     return {"turn": companion_turn.model_dump(), "audio_b64": audio_b64}
+
+
+@app.post("/turn-audio")
+async def turn_audio(req: AudioTurnRequest) -> dict:
+    """Voice turn: client mic audio -> STT (Sarvam/Whisper) -> companion -> voiced reply."""
+    s = get_settings()
+    wav = await to_wav(base64.b64decode(req.audio_b64))
+    transcript = await build_stt_router(s).transcribe(wav, language=req.language)
+    companion_turn = await respond(req.companion, transcript, s)
+    persona = get_persona(req.companion)
+    audio_b64 = ""
+    voice_id = persona.voice_id(s)
+    if voice_id:
+        tts = build_tts_router(s, AudioCache(str(_STATIC.parent / "audio_cache")))
+        audio = await tts.synthesize(
+            companion_turn.speech,
+            voice_id=voice_id,
+            stability=persona.stability,
+            language_code="ur",
+            seed=persona.seed(s),
+        )
+        audio_b64 = base64.b64encode(audio).decode("ascii")
+    return {"transcript": transcript, "turn": companion_turn.model_dump(), "audio_b64": audio_b64}
 
 
 @app.websocket("/ws")
